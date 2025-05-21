@@ -1,0 +1,20 @@
+name: Notify on Push
+
+on:
+  push:
+    branches:
+      - main  # or any branch you want to monitor
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify via Slack
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "🚀 New push to *${{ github.repository }}* on branch *${{ github.ref_name }}* by *${{ github.actor }}*"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
