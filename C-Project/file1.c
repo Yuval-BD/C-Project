@@ -46,19 +46,24 @@ EdgeList* build_paths(int* tree, int n);
 //void find_and_print_path(EdgeList primpaths[], int n, int first, int last);
 
 //Edge
-EdgeList BuildEmptyEdgeList();
-EdgeNode* CreateEdgeNode(int neighbor, int cost);
+EdgeList build_empty_edge_list();
+EdgeNode* create_edge_node(int neighbor, int cost);
 void insert_to_list(EdgeNode* previous, EdgeNode* new_node);
 void add_to_sorted_list(EdgeList* lst, int computer, int price);
 //Candidate
-CandidateList Build_Empty_CandidateList();
-CandidateNode* CreateCandidateNode(int comp, int min, CandidateNode* prev, CandidateNode* next);
+CandidateList build_empty_candidate_list();
+CandidateNode* create_candidate_node(int comp, int min, CandidateNode* prev, CandidateNode* next);
+void insert_to_dlist(CandidateNode* previous, CandidateNode* new_node);
+int DeleteMin(CandidateList priority, CandidateNode** loc);
+void DecreaseKey(CandidateNode** loc, int comp, int new_min);
+
 //Print
-void printEdgeLists(EdgeList* lists, int n);
+void print_edge_list(EdgeList* lists, int n);
+void print_priority(CandidateList lst, int n);
 //Free
-void FreeEdgeListArray(EdgeList* lst, int size);
-void FreeEdgeList(EdgeList* lst);
-void CheckMemoryAllocation(void* ptr);
+void free_edge_list_array(EdgeList* lst, int size);
+void free_edge_list(EdgeList* lst);
+void check_memory_allocation(void* ptr);
 
 int main() {
 	int n;
@@ -69,13 +74,17 @@ int main() {
 	int first, last;
 	scanf("%d", &n);
 	Net = build_net(n);
-	printEdgeLists(Net, n);
+	//print_edge_list(Net, n);
 
-	printf("\n");
+	//printf("\n");
 	PrimPath = build_paths(Prim, n);
-	printEdgeLists(PrimPath, n);
+	//print_edge_list(PrimPath, n);
 
-	//Prim = build_prim_tree(Net, n);
+	Prim = build_prim_tree(Net, n);
+	if (Prim == NULL)
+	{
+		return 0;
+	}
 	/*scanf("%d%d", &first, &last);
 	find_and_print_path(PrimPath, n, first, last);*/
 	return 0;
@@ -93,12 +102,12 @@ EdgeList* build_net(int n)
 
 	//Memory allocation and testing
 	Net = (EdgeList*)malloc(sizeof(EdgeList) * n);
-	CheckMemoryAllocation(Net);
+	check_memory_allocation(Net);
 
 	// bulid empty Net
 	for (int j = 0; j < n;j++)
 	{
-		Net[j] = BuildEmptyEdgeList();
+		Net[j] = build_empty_edge_list();
 	}
 
 	//fill them with the communications links
@@ -122,10 +131,10 @@ EdgeList* build_paths(int* tree, int n) {
 		return NULL;
 
 	new_net = (EdgeList*)malloc(n * sizeof(EdgeList)); //Create a new PC net 
-	CheckMemoryAllocation(new_net);
+	check_memory_allocation(new_net);
 
 	for (int i = 0; i < n; i++) //Initialise pc's in the new net
-		new_net[i] = BuildEmptyEdgeList();
+		new_net[i] = build_empty_edge_list();
 
 	for (int i = 0; i < n; i++) { //Add PC's connections to the new net
 		if (tree[i] != -1) {
@@ -138,53 +147,166 @@ EdgeList* build_paths(int* tree, int n) {
 	return new_net;
 }
 
-int* build_prim_tree(EdgeList net[], int n) {
+int* build_prim_tree(EdgeList Net[], int n) {
 	int* min, *prim;
 	CandidateList priority;
 	CandidateNode** location;
+	CandidateNode* curr;
+	int v = 0, u;
 	bool* inT; //Important! change to bytes and change size
 
 	min = (int*)malloc(sizeof(int) * n);
-	CheckMemoryAllocation(min);
+	check_memory_allocation(min);
 
 	prim = (int*)malloc(sizeof(int) * n);
-	CheckMemoryAllocation(prim);
+	check_memory_allocation(prim);
 
 	for (int i = 0; i < n; i++) {
 		min[i] = INT_MAX;
 		prim[i] = -1;
 	}
 
-	priority = Build_Empty_CandidateList();
+	priority = build_empty_candidate_list();
 	location = (CandidateNode**)malloc(n * sizeof(CandidateNode*));
-	CheckMemoryAllocation(location);
-	
-	inT = (bool*)malloc(sizeof(bool) * n); //Important! change to bytes and change size
-	CheckMemoryAllocation(inT);
+	check_memory_allocation(location);
 
-	for (int i = 0; i < n; i++) {
+	inT = (bool*)malloc(sizeof(bool) * n); //Important! change to bytes and change size
+	check_memory_allocation(inT);
+
+	for (int i = 0; i < n; i++) 
+	{
 		inT[i] = 0;
 	}
+	 
+	for (int j = 0;j < n;j++)
+	{
+		curr = create_candidate_node(j, min[j], priority.tail->prev, priority.tail);
+		insert_to_dlist(priority.tail->prev, curr);
+		location[j] = curr;
+	}
+
+	
+	min[v] = 0;
+	prim[0] = -1;
+
+	while (priority.head->next != priority.tail) 
+	{
+		u = DeleteMin(priority, location);
+
+		if (min[u] == INT_MAX)
+		{
+			printf("top");
+			printf("Cannot build prim");
+			return NULL;
+		}
+		else
+		{
+			inT[u] = true;
+			EdgeList u_list = Net[u];
+			EdgeNode* node = u_list.head->next;
+			int curr_node;
+			printf("1");
+			while (node != u_list.tail)
+			{
+				curr_node = node->e.neighbor;
+				printf("2");
+				if (!inT[curr_node] && node->e.cost < min[curr_node])
+				{
+					printf("3");
+					min[curr_node] = node->e.cost;
+					prim[curr_node] = u;
+					printf("4");
+					DecreaseKey(location, curr_node, node->e.cost);
+					printf("5");
+				}
+				node = node->next;
+			}
+			
+		}
+	}
+
+	/*  0 : -1
+		1 : 4
+		2 : 3
+		3 : 0
+		4 : 2
+		*/
+
 
 }
 
+void printer(int* arr,int n)
+{
+	for (int i = 0; i < n; i++)
+	{
+		printf("%d : %d \n", i, arr[i]);
+	}
+}
+
 /////////////////////////Help Functions////////////////////////////////////////////////////////////////////////////////
-CandidateList Build_Empty_CandidateList() {
+CandidateList build_empty_candidate_list() {
 	CandidateList newList;
 
-	newList.head = CreateCandidateNode(-1, INT_MAX, NULL, NULL);
-	newList.tail = CreateCandidateNode(-1, INT_MAX, newList.head, NULL);
+	newList.head = create_candidate_node(-1, INT_MAX, NULL, NULL);
+	newList.tail = create_candidate_node(-1, INT_MAX, newList.head, NULL);
 	newList.head->next = newList.tail;
 
 	return newList;
 }
 
-CandidateNode* CreateCandidateNode(int comp, int min, CandidateNode* prev, CandidateNode* next) {
+void delete_node(CandidateNode* del_node)
+{
+	del_node->next->prev = del_node->prev;
+	del_node->prev->next = del_node->next;
+
+	free(del_node);
+}
+
+int DeleteMin(CandidateList priority, CandidateNode** loc)
+{
+	CandidateNode* curr = priority.head->next->next;
+	CandidateNode* min_can = priority.head->next;
+	int num_comp;
+
+	while (curr != priority.tail)
+	{
+		if (curr->c.min < min_can->c.min)
+		{
+			min_can = curr;
+		}
+		curr = curr->next;
+	}
+
+	num_comp = min_can->c.computer;
+	loc[num_comp] = NULL;
+	delete_node(min_can);
+
+	return num_comp;
+}
+
+void DecreaseKey(CandidateNode** loc, int comp, int new_min) 
+{
+	loc[comp]->c.min = new_min;
+}
+
+void print_priority(CandidateList lst, int n)
+{
+	CandidateNode* current = lst.head;
+	while (current != NULL) 
+	{
+		printf(" -> (comp: %d, min: %d)", current->c.computer, current->c.min);
+		current = current->next;
+	}
+	printf("\n");
+	
+}
+
+CandidateNode* create_candidate_node(int comp, int min, CandidateNode* prev, CandidateNode* next) {
 	CandidateNode* newNode;
 	Candidate newCand;
 
-	newNode = (EdgeNode*)malloc(sizeof(EdgeNode));
-	CheckMemoryAllocation(newNode);
+	newNode = (CandidateNode*)malloc(sizeof(CandidateNode));
+	check_memory_allocation(newNode);
 
 	newCand.computer = comp;
 	newCand.min = min;
@@ -195,6 +317,14 @@ CandidateNode* CreateCandidateNode(int comp, int min, CandidateNode* prev, Candi
 
 	return newNode;
 };
+
+//A function that inserts new CandidateNode into a Candidatelist
+void insert_to_dlist(CandidateNode* previous, CandidateNode* new_node)
+{
+	previous->next->prev = new_node;
+	previous->next = new_node;
+	
+}
 
 //A function that inserts new EdgeNode into a EdgeList
 void insert_to_list(EdgeNode* previous, EdgeNode* new_node)
@@ -220,31 +350,31 @@ void add_to_sorted_list(EdgeList* lst, int computer, int price) {
 		return;
 	}
 
-	EdgeNode* new_node = CreateEdgeNode(computer, price);
+	EdgeNode* new_node = create_edge_node(computer, price);
 	insert_to_list(prev, new_node);
 }
 
 //Function that constructs an empty EdgeList
-EdgeList BuildEmptyEdgeList()
+EdgeList build_empty_edge_list()
 {
 	EdgeList newList;
 
 
-	newList.head = CreateEdgeNode(-1, -1);
-	newList.tail = CreateEdgeNode(-1, -1);
+	newList.head = create_edge_node(-1, -1);
+	newList.tail = create_edge_node(-1, -1);
 	newList.head->next = newList.tail;
 
 	return newList;
 }
 
 //Function that creates a new EdgeNode
-EdgeNode* CreateEdgeNode(int neighbor, int cost)
+EdgeNode* create_edge_node(int neighbor, int cost)
 {
 	EdgeNode* newNode;
 	Edge newEdge;
 
 	newNode = (EdgeNode*)malloc(sizeof(EdgeNode));
-	CheckMemoryAllocation(newNode);
+	check_memory_allocation(newNode);
 
 	newEdge.neighbor = neighbor;
 	newEdge.cost = cost;
@@ -255,7 +385,7 @@ EdgeNode* CreateEdgeNode(int neighbor, int cost)
 	return newNode;
 }
 
-void printEdgeLists(EdgeList* lists, int n)
+void print_edge_list(EdgeList* lists, int n)
 {
 	for (int i = 0; i < n; i++) {
 		printf("Node %d:", i);
@@ -269,17 +399,17 @@ void printEdgeLists(EdgeList* lists, int n)
 }
 
 //A function that releases the EdgeListArray
-void FreeEdgeListArray(EdgeList* lst, int size)
+void free_edge_list_array(EdgeList* lst, int size)
 {
 	if (lst != NULL) {
 		for (int i = 0; i < size; i++)
-			FreeEdgeList(&lst[i]);
+			free_edge_list(&lst[i]);
 		free(lst);
 	}
 }
 
 //A function that releases the EdgeList
-void FreeEdgeList(EdgeList* lst) {
+void free_edge_list(EdgeList* lst) {
 	EdgeNode* tempNode = lst->head;
 
 	while (tempNode != NULL) {
@@ -291,7 +421,7 @@ void FreeEdgeList(EdgeList* lst) {
 }
 
 //A function that checks memory allocation
-void CheckMemoryAllocation(void* ptr)
+void check_memory_allocation(void* ptr)
 {
 	if (ptr == NULL) {
 		printf("Memory allocation failed!\n");
